@@ -60,26 +60,36 @@ def merge_files(f1,f2,out,mode,p=None):
     a,b=toml.load(f1), toml.load(f2)
     conf=scan(a,b)
     tot=sum(len(v) for v in conf.values())
-    if tot==0: c.print(Panel("[green]No conflicts detected[/green]",title="Scan"))
+
+    if tot==0:
+        c.print(Panel("[green]No conflicts detected[/green]",title="Scan"))
     else:
         t=Table(title="Conflict Summary")
         t.add_column("Section"); t.add_column("Count")
         for s,v in conf.items(): t.add_row(s,str(len(v)))
         c.print(t)
+
     merged={}
-    with Progress("[progress.description]{task.description}",BarColumn(),TextColumn("{task.completed}/{task.total}")) as pr:
-        task=pr.add_task("Merging...",total=3)
+    if mode=="m":
         for s in ["versions","libraries","plugins"]:
             merged[s]=merge(a.get(s,{}),b.get(s,{}),s,mode,p)
-            pr.update(task,advance=1)
+    else:
+        with Progress("[progress.description]{task.description}",BarColumn(),TextColumn("{task.completed}/{task.total}")) as pr:
+            task=pr.add_task("Merging...", total=3)
+            for s in ["versions","libraries","plugins"]:
+                merged[s]=merge(a.get(s,{}),b.get(s,{}),s,mode,p)
+                pr.update(task,advance=1)
+
     write_toml(merged,out)
     c.print(Panel(f"[green]Merged saved to {out}[/green]", title="Success"))
 
 if __name__=="__main__":
     c.print(Panel(ASCII,title="libs.versions.toml Merger",style="bold cyan"))
+
     f1=c.input("Path to first TOML: ").strip()
     f2=c.input("Path to second TOML: ").strip()
     out=c.input("Output file (default merged_libs.versions.toml): ").strip() or "merged_libs.versions.toml"
+
     mode=c.input("Merge mode: [1] Priority [2] Manual: ").strip()
     if mode=="1":
         p=c.input("Priority file [1] First [2] Second: ").strip()
